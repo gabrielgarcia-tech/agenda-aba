@@ -1,0 +1,6 @@
+start_time,end_time,professional_full_name,patient_full_name,appointment_type,is_group_appointment,notes
+2026-03-02 08:00:00,2026-03-02 08:50:00,Leonice Borges,Gabriel Rodrigues Jacinto,clinic,false,
+2026-03-02 08:50:00,2026-03-02 09:40:00,Leonice Borges,Gabriel Rodrigues Jacinto,clinic,false,
+2026-03-02 13:40:00,2026-03-02 14:30:00,Brenda Lopes,Thomas Massaki Katumata Cardoso,school,false,Atendimento Escolar
+2026-03-02 15:20:00,2026-03-02 16:10:00,Brenda Lopes,Vitoria Barbosa Fagundes,clinic,true,Atendimento em grupo com Valentina Lopes da Silva
+2026-03-02 15:20:00,2026-03-02 16:10:00,Brenda Lopes,Valentina Lopes da Silva,clinic,true,Atendimento em grupo com Vitoria Barbosa Fagundes
