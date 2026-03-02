@@ -45,3 +45,28 @@ Este documento descreve um plano passo a passo para a implementação do novo si
     - Fazer o deploy do código em produção.
     - Executar o script de migração de dados no banco de dados de produção.
     - Monitorar por erros e feedback do usuário.
+
+
+---
+
+## Checklist de Tarefas Adicionais (v2)
+
+### Backend
+
+- **[ ] Modificar `create-recurring-appointment`:**
+    - Adicionar suporte para `appointment_type`.
+    - Adicionar lógica para criar registros em `appointment_patients` se for um atendimento em grupo.
+- **[ ] Modificar `get-calendar-events`:**
+    - Juntar informações de `appointment_patients`.
+    - Retornar `is_group_appointment` e `appointment_type` para o frontend.
+
+### Frontend
+
+- **[ ] Criar Página de Gerenciamento de Salas (`/admin/rooms`):**
+    - Formulário para criar/editar salas com `name`, `discipline`, e `capacity`.
+- **[ ] Atualizar Modal de Agendamento:**
+    - Adicionar campo `appointment_type`.
+    - Adicionar checkbox "Atendimento em Grupo" e campo de seleção múltipla de pacientes.
+- **[ ] Atualizar Visualização do Calendário:**
+    - Implementar a lógica de cores para horários divergentes e atendimentos em grupo.
+    - Implementar a visualização de sub-slots para salas com capacidade > 1.

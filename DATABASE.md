@@ -1,27 +1,30 @@
-# Especificação do Banco de Dados - Sistema de Agenda
+# Especificação do Banco de Dados - Sistema de Agenda (v2)
 
-Este documento detalha as mudanças e adições necessárias ao esquema do banco de dados Supabase para suportar o novo sistema de agendamento. A estrutura foi projetada para ser flexível, escalável e integrada à arquitetura multi-tenant existente do NexoABA.
+Este documento detalha as mudanças e adições necessárias ao esquema do banco de dados Supabase para suportar o novo sistema de agendamento, **incorporando as regras de negócio descobertas na análise da planilha da clínica**.
 
-## Resumo das Mudanças
+## Resumo das Mudanças (v2)
 
-- **Novas Tabelas:** Serão criadas 4 novas tabelas para gerenciar salas, agendamentos (recorrentes e únicos), e a associação de múltiplos profissionais a um único agendamento.
-- **Tabela Depreciada:** A tabela `patient_schedules` será substituída pela nova e mais robusta tabela `appointments`.
-- **Configurações:** Uma nova tabela `clinic_settings` será adicionada para gerenciar configurações por franquia, como a duração padrão das sessões.
+- **Tabela `rooms`:** Adicionados campos `discipline` e `capacity` para suportar salas com múltiplos atendimentos simultâneos (sub-slots).
+- **Tabela `appointments`:** Adicionados campos `appointment_type` (clínica, escolar, etc.), `is_group_appointment` (para atendimentos duplos), e `group_id`.
+- **Tabela `appointment_patients`:** Nova tabela de junção para suportar múltiplos pacientes em um único agendamento (atendimento duplo).
+- **Tabela `clinic_settings`:** Adicionado campo `session_break_duration` para o intervalo entre sessões.
+- **Tabela `profiles`:** A coluna `role` será alterada para suportar um array de papéis (ex: `["fonoaudiologa", "aplicadora_aba"]`).
 
 ---
 
-## Novas Tabelas
+## Novas Tabelas (v2)
 
 ### 1. `rooms`
 
-Armazena as salas de atendimento de cada clínica.
+Armazena as salas de atendimento de cada clínica, com suporte a múltiplos atendimentos simultâneos.
 
 | Coluna | Tipo | Descrição |
 | :--- | :--- | :--- |
 | `id` | `uuid` | Chave Primária (PK) |
 | `clinic_id` | `uuid` | Chave Estrangeira (FK) para `clinics.id` |
 | `name` | `text` | Nome da sala (ex: "Sala 1", "Sala Sensorial") |
-| `capacity` | `integer` | Capacidade máxima de pessoas na sala (opcional) |
+| `discipline` | `text` | Enum: `fonoaudiologia`, `terapia_ocupacional`, `psicologia`, `geral` |
+| `capacity` | `integer` | **NOVO:** Número de atendimentos simultâneos (sub-slots) |
 | `description` | `text` | Descrição ou notas sobre a sala (opcional) |
 | `created_at` | `timestamptz` | Data/hora de criação |
 | `updated_at` | `timestamptz` | Data/hora da última atualização |
@@ -34,11 +37,14 @@ Coração do novo sistema, armazena cada evento de agendamento individual.
 | :--- | :--- | :--- |
 | `id` | `uuid` | Chave Primária (PK) |
 | `clinic_id` | `uuid` | FK para `clinics.id` |
-| `patient_id` | `uuid` | FK para `patients.id` |
 | `start_time` | `timestamptz` | Data e hora de início do agendamento |
 | `end_time` | `timestamptz` | Data e hora de término do agendamento |
 | `room_id` | `uuid` | FK para `rooms.id` (opcional) |
+| `room_slot` | `integer` | **NOVO:** Sub-slot da sala (ex: 1 para Sala 1A, 2 para Sala 1B) |
 | `status` | `text` | Enum: `scheduled`, `completed`, `cancelled`, `no_show` |
+| `appointment_type` | `text` | **NOVO:** Enum: `clinic`, `school`, `home`, `online` |
+| `is_group_appointment` | `boolean` | **NOVO:** `true` se for um atendimento em grupo (duplo ou mais) |
+| `group_id` | `uuid` | **NOVO:** ID para agrupar múltiplos `appointments` em um atendimento em grupo |
 | `notes` | `text` | Notas sobre o agendamento específico |
 | `created_by` | `uuid` | FK para `profiles.id` do usuário que criou |
 | `recurring_appointment_id` | `uuid` | FK para `recurring_appointments.id` (se aplicável) |
@@ -55,7 +61,16 @@ Tabela de junção que permite que múltiplos profissionais sejam associados a u
 | `professional_id` | `uuid` | PK, FK para `profiles.id` |
 | `role` | `text` | Papel no agendamento (ex: 'principal', 'assistente') |
 
-### 4. `recurring_appointments`
+### 4. `appointment_patients`
+
+**NOVA TABELA:** Tabela de junção para suportar múltiplos pacientes em um único agendamento.
+
+| Coluna | Tipo | Descrição |
+| :--- | :--- | :--- |
+| `appointment_id` | `uuid` | PK, FK para `appointments.id` |
+| `patient_id` | `uuid` | PK, FK para `patients.id` |
+
+### 5. `recurring_appointments`
 
 Define as regras para agendamentos recorrentes.
 
@@ -63,9 +78,6 @@ Define as regras para agendamentos recorrentes.
 | :--- | :--- | :--- |
 | `id` | `uuid` | Chave Primária (PK) |
 | `clinic_id` | `uuid` | FK para `clinics.id` |
-| `patient_id` | `uuid` | FK para `patients.id` |
-| `professional_id` | `uuid` | FK para `profiles.id` (profissional principal) |
-| `room_id` | `uuid` | FK para `rooms.id` (opcional) |
 | `start_time` | `time` | Hora de início (ex: '09:00:00') |
 | `end_time` | `time` | Hora de término (ex: '09:50:00') |
 | `recurrence_rule` | `text` | Regra no formato iCalendar RRULE (ex: `FREQ=WEEKLY;BYDAY=MO,WE,FR`) |
@@ -74,7 +86,7 @@ Define as regras para agendamentos recorrentes.
 | `created_by` | `uuid` | FK para `profiles.id` |
 | `created_at` | `timestamptz` | Data/hora de criação |
 
-### 5. `clinic_settings`
+### 6. `clinic_settings`
 
 Armazena configurações específicas de cada franquia.
 
@@ -83,16 +95,17 @@ Armazena configurações específicas de cada franquia.
 | `id` | `uuid` | Chave Primária (PK) |
 | `clinic_id` | `uuid` | FK para `clinics.id` (com constraint `UNIQUE`) |
 | `default_session_duration` | `integer` | Duração padrão da sessão em minutos (ex: 50) |
+| `session_break_duration` | `integer` | **NOVO:** Duração do intervalo entre sessões em minutos (ex: 10) |
 | `allow_manual_duration` | `boolean` | Se `true`, permite que a duração seja ajustada manualmente |
 | `updated_at` | `timestamptz` | Data/hora da última atualização |
 
 ---
 
-## Plano de Migração
+## Plano de Migração (v2)
 
-1.  **Criar as Novas Tabelas:** Executar um script de migração SQL para criar as tabelas `rooms`, `appointments`, `appointment_professionals`, `recurring_appointments`, e `clinic_settings`.
-2.  **Migrar Dados:** Criar um script (preferencialmente uma Edge Function no Supabase) para ler todos os dados da tabela `patient_schedules` e inseri-los na nova tabela `appointments`. A lógica deverá:
-    - Para cada registro em `patient_schedules`, criar um registro correspondente em `recurring_appointments` com uma regra semanal (`FREQ=WEEKLY`).
-    - Gerar as instâncias individuais em `appointments` para os próximos 12 meses com base na regra de recorrência.
-3.  **Depreciar `patient_schedules`:** Após a migração bem-sucedida e validação, a tabela `patient_schedules` pode ser renomeada para `patient_schedules_deprecated` e, eventualmente, removida.
-4.  **Atualizar a Aplicação:** O código do frontend (hooks e componentes) deve ser atualizado para usar as novas tabelas e a nova estrutura de dados.
+1.  **Atualizar a Migração:** Modificar o script de migração SQL para incluir os novos campos e a nova tabela `appointment_patients`.
+2.  **Atualizar o Script de Migração de Dados:** A Edge Function de migração deve ser atualizada para:
+    - Ler os dados da tabela `patient_schedules`.
+    - Identificar atendimentos duplos (baseado em notas ou formatação) e criar os registros correspondentes em `appointment_patients`.
+    - Criar os registros em `appointments` e `recurring_appointments`.
+3.  **Atualizar a Aplicação:** O código do frontend (hooks e componentes) deve ser atualizado para usar a nova estrutura de dados, incluindo o suporte a atendimentos em grupo e tipos de agendamento.

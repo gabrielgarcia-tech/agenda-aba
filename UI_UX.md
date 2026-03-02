@@ -54,3 +54,30 @@ Um formulário completo para criar ou editar agendamentos.
 
 - **`AppointmentCard`:** Um componente para exibir as informações de um agendamento dentro do calendário.
 - **`RecurrenceEditor`:** Um componente para criar e editar regras de recorrência RRULE de forma amigável.
+
+
+---
+
+## Atualizações da v2 (Baseado na Análise da Planilha)
+
+### 1. Gerenciamento de Salas
+
+- **Página de Gerenciamento de Salas (`/admin/rooms`):**
+    - Uma nova página para `admins` e `supervisors` criarem e editarem salas.
+    - O formulário de criação/edição de sala deve conter os campos: `name`, `discipline` (dropdown), e `capacity` (input numérico).
+    - A interface deve exibir o nome da sala com seus sub-slots (ex: "Sala 1 (A, B, C)" se a capacidade for 3).
+
+### 2. Modal de Agendamento (v2)
+
+- **Tipo de Agendamento:** Adicionar um campo `appointment_type` (dropdown: Clínica, Escolar, Domiciliar, Online).
+- **Atendimento em Grupo:**
+    - Adicionar um checkbox "Atendimento em Grupo".
+    - Se marcado, o campo "Paciente" deve permitir a seleção de múltiplos pacientes.
+- **Duração Manual:** Se `allow_manual_duration` for `true` nas configurações da clínica, os campos de `start_time` e `end_time` devem ser editáveis. Caso contrário, o `end_time` é calculado automaticamente com base no `default_session_duration`.
+
+### 3. Visualização do Calendário (v2)
+
+- **Cores:** Os eventos no calendário devem ser coloridos de acordo com as regras da planilha:
+    - **Rosa/Magenta:** Para agendamentos com duração diferente da padrão.
+    - **Azul Tiffany:** Para atendimentos em grupo.
+- **Sub-slots de Sala:** Na visualização por sala, se uma sala tem capacidade > 1, ela deve ser exibida com sub-colunas (ex: Sala 1-A, Sala 1-B) para que os agendamentos simultâneos possam ser visualizados claramente.
